@@ -32,7 +32,7 @@ const handleStream = (ws) => {
                     writeStream = fs.createWriteStream(filePath);
                     console.log(`[StreamService] Recording to: ${filePath}`);
                     break;
-
+// Important
                 case 'media':
                     // Twilio sends audio in base64 encoded chunks
                     if (writeStream && msg.media.payload) {

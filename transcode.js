@@ -4,7 +4,7 @@ const WaveFile = require('wavefile').WaveFile;
 
 // ---------------- CONFIGURATION ----------------
 // filename of your raw audio (without the path, just name)
-const INPUT_FILENAME = 'CA386c7f971b0aef7668d502c918924fc2.ulaw'; 
+const INPUT_FILENAME = 'CA2decbf9a252db1e6dae049de8189e79e.ulaw'; 
 // -----------------------------------------------
 
 const recordingsDir = path.join(__dirname, 'recordings');
