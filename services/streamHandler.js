@@ -20,6 +20,7 @@ const handleStream = (ws) => {
     ws.on('message', (message) => {
         try {
             const msg = JSON.parse(message);
+            console.log(message)
 
             switch (msg.event) {
                 case 'start':
