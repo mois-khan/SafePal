@@ -51,9 +51,9 @@ const handleStream = (ws) => {
                     
                     // Create a write stream to save raw audio (Mu-law 8khz)
                     // Filename will be the CallSid.ulaw
-                    const filePath = path.join(RECORDINGS_DIR, `${callSid}.ulaw`);
-                    writeStream = fs.createWriteStream(filePath);
-                    console.log(`[StreamService] Recording to: ${filePath}`);
+                    // const filePath = path.join(RECORDINGS_DIR, `${callSid}.ulaw`);
+                    // writeStream = fs.createWriteStream(filePath);
+                    // console.log(`[StreamService] Recording to: ${filePath}`);
                     break;
 // Important
                 case 'media':
