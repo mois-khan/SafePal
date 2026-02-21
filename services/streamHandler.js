@@ -17,10 +17,16 @@ const handleStream = (ws) => {
     let writeStream = null;
     let callSid = null;
 
+    // --- BATCHING SETUP ---
+    let audioBufferArray = []; // The bucket to hold our 20ms chunks
+    let currentBatchSize = 0;  // Keep track of how many bytes we have
+    const TARGET_BATCH_SIZE = 8000; // 8000 bytes = 1 full second of audio
+
     ws.on('message', (message) => {
         try {
             const msg = JSON.parse(message);
-            console.log(message)
+            // console.log(message)
+            console.log(msg)
 
             switch (msg.event) {
                 case 'start':
