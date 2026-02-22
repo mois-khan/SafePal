@@ -12,6 +12,7 @@ const handleStream = (ws) => {
         // We tell Deepgram exactly what Twilio is sending: 8000Hz Mu-Law
         const deepgramUrl = 'wss://api.deepgram.com/v1/listen?encoding=mulaw&sample_rate=8000&channels=1&model=nova-2&smart_format=true';
         
+        // API key
         const dgSocket = new WebSocket(deepgramUrl, {
             headers: { Authorization: `Token ${api}` }
         });
