@@ -26,6 +26,11 @@ const handleStream = (ws) => {
     console.log("🔗 Connected to Python Transcriber");
   });
 
+  pythonWs.on('error', (error) => {
+        console.error('❌ Python WebSocket Error:', error.message);
+        console.error('Is the Python server running on port 4000?');
+    });
+
   // 2. Listen for Transcriptions coming BACK from Python
   pythonWs.on("message", (data) => {
     const result = JSON.parse(data);
@@ -59,9 +64,11 @@ const handleStream = (ws) => {
               // 4. Merge all the tiny chunks into one big Buffer
               const batchedBuffer = Buffer.concat(audioBufferArray);
 
+              const base64Batch = batchedBuffer.toString('base64');
+
               // 3. SEND THE BATCH TO PYTHON (Send as raw binary)
               if (pythonWs.readyState === WebSocket.OPEN) {
-                pythonWs.send(batchedBuffer);
+                pythonWs.send(JSON.stringify({ payload: base64Batch }));
               }
 
               // 6. Empty the bucket for the next batch
