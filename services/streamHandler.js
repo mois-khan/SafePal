@@ -3,6 +3,7 @@ const WebSocket = require('ws');
 
 // console.log(process.env.DEEPGRAM_API_KEY)
 
+const api = process.env.DEEPGRAM_API_KEY
 const handleStream = (ws) => {
     console.log('[StreamService] Twilio Call Connected');
     
@@ -12,7 +13,7 @@ const handleStream = (ws) => {
         const deepgramUrl = 'wss://api.deepgram.com/v1/listen?encoding=mulaw&sample_rate=8000&channels=1&model=nova-2&smart_format=true';
         
         const dgSocket = new WebSocket(deepgramUrl, {
-            headers: { Authorization: `Token ${process.env.DEEPGRAM_API_KEY}` }
+            headers: { Authorization: `Token ${api}` }
         });
 
         dgSocket.on('open', () => console.log(`🔗 Deepgram connected for ${trackName}`));
@@ -29,6 +30,14 @@ const handleStream = (ws) => {
 
         dgSocket.on('error', (err) => console.error(`❌ Deepgram Error (${trackName}):`, err.message));
         
+        // 🚨 ADDED: Catches HTTP rejections BEFORE the connection opens
+        dgSocket.on('unexpected-response', (req, res) => {
+            console.error(`🛑 Deepgram Connection Rejected (${trackName}). HTTP Status: ${res.statusCode}`);
+            if (res.statusCode === 401) console.error("   -> Reason: Your API Key is missing, invalid, or out of credits.");
+            if (res.statusCode === 400) console.error("   -> Reason: Bad Request (Check URL parameters).");
+            if (res.statusCode === 403) console.error("   -> Reason: Forbidden. You might have pasted a Project ID instead of an API Key.");
+        });
+
         return dgSocket;
     };
 
