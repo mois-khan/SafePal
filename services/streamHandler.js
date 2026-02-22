@@ -24,7 +24,7 @@ const handleStream = (ws) => {
         inbound: { array: [], size: 0 },
         outbound: { array: [], size: 0 }
     };
-    const TARGET_BATCH_SIZE = 8000; // 1 second of audio
+    const TARGET_BATCH_SIZE = 24000; // 3 second of audio
 
     ws.on('message', (message) => {
         try {
