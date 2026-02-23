@@ -1,7 +1,72 @@
 require('dotenv').config(); 
 const WebSocket = require('ws');
 
-// console.log(process.env.DEEPGRAM_API_KEY)
+// ==========================================
+    // 🧠 1. THE COGNITIVE ENGINE STATE
+    // ==========================================
+    let contextBuffer = [];
+    let newSentenceCount = 0;
+    let newWordCount = 0;
+    let isGeminiProcessing = false; // The Concurrency Lock
+    const MAX_BUFFER_SIZE = 15;     // The Smart Array Ceiling
+
+    // ==========================================
+    // ⚙️ 2. THE BUFFERING LOGIC
+    // ==========================================
+    const processTranscript = async (speaker, text) => {
+        // 1. Format and push the new sentence
+        const formattedLine = `[${speaker.toUpperCase()}]: ${text}`;
+        contextBuffer.push(formattedLine);
+        
+        // 2. Increment our hybrid counters
+        newSentenceCount++;
+        newWordCount += text.split(/\s+/).length; // Counts words by splitting on spaces
+
+        // 3. The Smart Array: Enforce the 15-line ceiling
+        if (contextBuffer.length > MAX_BUFFER_SIZE) {
+            contextBuffer.shift(); // Drops the oldest line
+        }
+
+        // 4. The Hybrid Trigger: Wait for actual substance, not just "Uh-huh"
+        if (newSentenceCount >= 3 && newWordCount >= 20) {
+            
+            // 5. The Concurrency Lock: Prevent race conditions
+            if (isGeminiProcessing) {
+                console.log("⏳ [BUFFER] Gemini is busy. Holding text for the next trigger...");
+                return;
+            }
+
+            // Lock the engine
+            isGeminiProcessing = true;
+            
+            // Snapshot the current conversation
+            const transcriptPayload = contextBuffer.join('\n');
+            
+            // Instantly reset counters so Node.js can track new incoming text while Gemini thinks
+            newSentenceCount = 0;
+            newWordCount = 0;
+
+            console.log("\n🚀 [TRIGGER] Firing Payload to Gemini...");
+            console.log("--- SNAPSHOT ---");
+            console.log(transcriptPayload);
+            console.log("----------------");
+
+            try {
+                // We will plug the actual Gemini API call here in the next step
+                // const result = await evaluateWithGemini(transcriptPayload);
+                
+                // Mocking the Gemini network delay for now (2 seconds)
+                setTimeout(() => {
+                    console.log("✅ [GEMINI] Mock Analysis Complete. Lock released.\n");
+                    isGeminiProcessing = false; // Unlock the engine
+                }, 2000);
+
+            } catch (error) {
+                console.error("❌ [GEMINI] API Error:", error);
+                isGeminiProcessing = false; // Always unlock on failure so the system doesn't freeze
+            }
+        }
+    };
 
 const api = process.env.DEEPGRAM_API_KEY
 const handleStream = (ws) => {
@@ -22,10 +87,14 @@ const handleStream = (ws) => {
         dgSocket.on('message', (data) => {
             const response = JSON.parse(data);
             
-            // We only want to log the finalized sentences, not the partial guesses
             if (response.is_final && response.channel && response.channel.alternatives[0].transcript) {
                 const transcript = response.channel.alternatives[0].transcript;
-                console.log(`🎯 [${trackName.toUpperCase()}]: ${transcript}`);
+                
+                // We still log the raw output to the terminal so you can read it
+                console.log(`🗣️ [${trackName.toUpperCase()}]: ${transcript}`);
+                
+                // 🚨 ADD THIS: Pipe the text directly into our Cognitive Engine
+                processTranscript(trackName, transcript);
             }
         });
 
