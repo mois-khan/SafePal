@@ -27,7 +27,7 @@ const responseSchema = {
     required: ["scam_probability", "flagged_tactics", "explanation"]
 };
 
-// Configure the model
+// Configure the model - "Gemini-2.5-flash"
 const model = genAI.getGenerativeModel({
     model: "gemini-2.5-flash",
     systemInstruction: "You are a real-time cybersecurity AI monitoring a live phone call. Analyze the provided transcript snippet. Detect signs of social engineering, scams, or fraud. You must strictly return the requested JSON format and nothing else.",
