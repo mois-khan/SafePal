@@ -29,7 +29,7 @@ const responseSchema = {
 
 // Configure the model
 const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-2.5-flash",
     systemInstruction: "You are a real-time cybersecurity AI monitoring a live phone call. Analyze the provided transcript snippet. Detect signs of social engineering, scams, or fraud. You must strictly return the requested JSON format and nothing else.",
     generationConfig: {
         responseMimeType: "application/json",
@@ -71,7 +71,7 @@ const evaluateWithGemini = async (transcriptBlock) => {
         }
 
         // 4. The Hybrid Trigger: Wait for actual substance, not just "Uh-huh"
-        if (newSentenceCount >= 3 && newWordCount >= 20) {
+        if (newSentenceCount >= 5 && newWordCount >= 35) {
             
             // 5. The Concurrency Lock: Prevent race conditions
             if (isGeminiProcessing) {
