@@ -1,6 +1,49 @@
 require('dotenv').config(); 
 const WebSocket = require('ws');
 
+const { GoogleGenerativeAI, SchemaType } = require("@google/generative-ai");
+
+// Initialize the Gemini SDK
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// Define the exact JSON structure we want back
+const responseSchema = {
+    type: SchemaType.OBJECT,
+    properties: {
+        scam_probability: { 
+            type: SchemaType.INTEGER, 
+            description: "A score from 0 to 100 indicating the likelihood of this being a scam." 
+        },
+        flagged_tactics: { 
+            type: SchemaType.ARRAY, 
+            items: { type: SchemaType.STRING },
+            description: "List of identified tactics like 'Urgency', 'Impersonation', 'Financial Extraction'." 
+        },
+        explanation: { 
+            type: SchemaType.STRING, 
+            description: "A strict, 1-sentence explanation of why this score was given." 
+        }
+    },
+    required: ["scam_probability", "flagged_tactics", "explanation"]
+};
+
+// Configure the model
+const model = genAI.getGenerativeModel({
+    model: "gemini-1.5-flash",
+    systemInstruction: "You are a real-time cybersecurity AI monitoring a live phone call. Analyze the provided transcript snippet. Detect signs of social engineering, scams, or fraud. You must strictly return the requested JSON format and nothing else.",
+    generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: responseSchema,
+    },
+});
+
+// The execution function
+const evaluateWithGemini = async (transcriptBlock) => {
+    const result = await model.generateContent(transcriptBlock);
+    const jsonText = result.response.text();
+    return JSON.parse(jsonText); // Returns a clean JavaScript object
+};
+
 // ==========================================
     // 🧠 1. THE COGNITIVE ENGINE STATE
     // ==========================================
@@ -56,10 +99,22 @@ const WebSocket = require('ws');
                 // const result = await evaluateWithGemini(transcriptPayload);
                 
                 // Mocking the Gemini network delay for now (2 seconds)
-                setTimeout(() => {
-                    console.log("✅ [GEMINI] Mock Analysis Complete. Lock released.\n");
-                    isGeminiProcessing = false; // Unlock the engine
-                }, 2000);
+                try {
+                // Call Gemini
+                const analysis = await evaluateWithGemini(transcriptPayload);
+                
+                console.log("✅ [GEMINI] Analysis Complete:");
+                console.log(`🚨 Scam Probability: ${analysis.scam_probability}%`);
+                console.log(`🚩 Tactics: ${analysis.flagged_tactics.join(', ') || 'None'}`);
+                console.log(`📝 Reasoning: ${analysis.explanation}\n`);
+
+                // Unlock the engine for the next batch
+                isGeminiProcessing = false; 
+
+                } catch (error) {
+                    console.error("❌ [GEMINI] API Error:", error.message);
+                    isGeminiProcessing = false; // Always unlock on failure
+                }
 
             } catch (error) {
                 console.error("❌ [GEMINI] API Error:", error);
