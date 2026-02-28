@@ -56,75 +56,57 @@ const evaluateWithGemini = async (transcriptBlock) => {
     // ==========================================
     // ⚙️ 2. THE BUFFERING LOGIC
     // ==========================================
-    const processTranscript = async (speaker, text) => {
-        // 1. Format and push the new sentence
-        const formattedLine = `[${speaker.toUpperCase()}]: ${text}`;
-        contextBuffer.push(formattedLine);
+const processTranscript = async (speaker, text, broadcastFn) => {
+    const formattedLine = `[${speaker.toUpperCase()}]: ${text}`;
+    contextBuffer.push(formattedLine);
+    
+    newSentenceCount++;
+    newWordCount += text.split(/\s+/).length;
+
+    if (contextBuffer.length > MAX_BUFFER_SIZE) contextBuffer.shift();
+
+    if (newSentenceCount >= 5 && newWordCount >= 35) {
+        if (isGeminiProcessing) return;
+        isGeminiProcessing = true;
         
-        // 2. Increment our hybrid counters
-        newSentenceCount++;
-        newWordCount += text.split(/\s+/).length; // Counts words by splitting on spaces
+        const transcriptPayload = contextBuffer.join('\n');
+        newSentenceCount = 0;
+        newWordCount = 0;
 
-        // 3. The Smart Array: Enforce the 15-line ceiling
-        if (contextBuffer.length > MAX_BUFFER_SIZE) {
-            contextBuffer.shift(); // Drops the oldest line
-        }
-
-        // 4. The Hybrid Trigger: Wait for actual substance, not just "Uh-huh"
-        if (newSentenceCount >= 5 && newWordCount >= 35) {
+        try {
+            const analysis = await evaluateWithGemini(transcriptPayload);
             
-            // 5. The Concurrency Lock: Prevent race conditions
-            if (isGeminiProcessing) {
-                console.log("⏳ [BUFFER] Gemini is busy. Holding text for the next trigger...");
-                return;
+            console.log("✅ [GEMINI] Analysis Complete:");
+            console.log(`🚨 Scam Probability: ${analysis.scam_probability}%`);
+            console.log(`🚩 Tactics: ${analysis.flagged_tactics.join(', ') || 'None'}`);
+            console.log(`📝 Reasoning: ${analysis.explanation}\n`);
+
+            // 🚨 UPDATE 2: TRIGGER THE BROADCAST TO FLUTTER 🚨
+            // If Gemini says it's a scam (e.g., probability > 60%), we alert the user
+            if (analysis.scam_probability > 60 && broadcastFn) {
+                const threatPayload = {
+                    type: "ALERT",
+                    threatLevel: analysis.scam_probability > 85 ? "CRITICAL" : "SUSPICIOUS",
+                    probability: analysis.scam_probability,
+                    tactics: analysis.flagged_tactics,
+                    explanation: analysis.explanation,
+                    timestamp: new Date().toISOString()
+                };
+                
+                broadcastFn(threatPayload);
+                console.log("📡 Threat Alert broadcasted to Flutter app!");
             }
 
-            // Lock the engine
-            isGeminiProcessing = true;
-            
-            // Snapshot the current conversation
-            const transcriptPayload = contextBuffer.join('\n');
-            
-            // Instantly reset counters so Node.js can track new incoming text while Gemini thinks
-            newSentenceCount = 0;
-            newWordCount = 0;
-
-            console.log("\n🚀 [TRIGGER] Firing Payload to Gemini...");
-            console.log("--- SNAPSHOT ---");
-            console.log(transcriptPayload);
-            console.log("----------------");
-
-            try {
-                // We will plug the actual Gemini API call here in the next step
-                // const result = await evaluateWithGemini(transcriptPayload);
-                
-                // Mocking the Gemini network delay for now (2 seconds)
-                try {
-                // Call Gemini
-                const analysis = await evaluateWithGemini(transcriptPayload);
-                
-                console.log("✅ [GEMINI] Analysis Complete:");
-                console.log(`🚨 Scam Probability: ${analysis.scam_probability}%`);
-                console.log(`🚩 Tactics: ${analysis.flagged_tactics.join(', ') || 'None'}`);
-                console.log(`📝 Reasoning: ${analysis.explanation}\n`);
-
-                // Unlock the engine for the next batch
-                isGeminiProcessing = false; 
-
-                } catch (error) {
-                    console.error("❌ [GEMINI] API Error:", error.message);
-                    isGeminiProcessing = false; // Always unlock on failure
-                }
-
-            } catch (error) {
-                console.error("❌ [GEMINI] API Error:", error);
-                isGeminiProcessing = false; // Always unlock on failure so the system doesn't freeze
-            }
+            isGeminiProcessing = false; 
+        } catch (error) {
+            console.error("❌ [GEMINI] API Error:", error.message);
+            isGeminiProcessing = false; 
         }
-    };
+    }
+};
 
 const api = process.env.DEEPGRAM_API_KEY
-const handleStream = (ws) => {
+const handleStream = (ws, broadcastFn) => {
     console.log('[StreamService] Twilio Call Connected');
     
     // Helper function to spawn a Deepgram connection for a specific track
@@ -141,15 +123,12 @@ const handleStream = (ws) => {
         
         dgSocket.on('message', (data) => {
             const response = JSON.parse(data);
-            
             if (response.is_final && response.channel && response.channel.alternatives[0].transcript) {
                 const transcript = response.channel.alternatives[0].transcript;
-                
-                // We still log the raw output to the terminal so you can read it
                 console.log(`🗣️ [${trackName.toUpperCase()}]: ${transcript}`);
-                
-                // 🚨 ADD THIS: Pipe the text directly into our Cognitive Engine
-                processTranscript(trackName, transcript);
+
+                // UPDATE 4: Pass the broadcastFn down into the processing loop
+                processTranscript(trackName, transcript, broadcastFn);
             }
         });
 

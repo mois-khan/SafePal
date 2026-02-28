@@ -25,12 +25,40 @@ app.use('/api', callRoutes);
 
 // WebSocket Handling
 // Twilio connects to wss://your-url.com/stream
+// --- NEW: The Flutter Client Registry ---
+const flutterClients = new Set();
+
+const broadcastToFlutter = (payload) => {
+    flutterClients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(payload));
+        }
+    });
+};
+
+// --- UPDATED: WebSocket Handling ---
 wss.on('connection', (ws, req) => {
-    // Check if the connection request is for the stream path
     if (req.url === '/stream') {
-        handleStream(ws);
+        // 1. Twilio connecting to stream audio
+        // We now pass 'broadcastToFlutter' as a second argument!
+        handleStream(ws, broadcastToFlutter); 
+
+    } else if (req.url === '/flutter-alerts') {
+        // 2. Mobile App connecting to listen for scams
+        console.log('📱 Flutter App Connected to Alerts Channel!');
+        flutterClients.add(ws);
+
+        // Send a handshake so the app knows it connected successfully
+        ws.send(JSON.stringify({ type: "SYSTEM", message: "Monitoring Active" }));
+
+        ws.on('close', () => {
+            console.log('📱 Flutter App Disconnected.');
+            flutterClients.delete(ws);
+        });
+
     } else {
-        ws.close();
+        // Reject unknown connections
+        ws.close(); 
     }
 });
 
