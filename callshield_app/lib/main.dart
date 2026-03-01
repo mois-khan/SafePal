@@ -31,20 +31,19 @@ class AlertScreen extends StatefulWidget {
 
 class _AlertScreenState extends State<AlertScreen> {
   final AlertService _alertService = AlertService();
-
-  // ⚠️ IMPORTANT: Paste your CURRENT active Ngrok URL here!
   final String currentNgrokUrl = "https://concavely-inflationary-eddy.ngrok-free.dev";
+
+  // 🚨 NEW: State variable to track if the alert is minimized
+  bool _isMinimized = false;
 
   @override
   void initState() {
     super.initState();
-    // Connect to the backend the second the app opens
     _alertService.connect(currentNgrokUrl);
   }
 
   @override
   void dispose() {
-    // Clean up the connection if the user closes the app
     _alertService.disconnect();
     super.dispose();
   }
@@ -57,28 +56,16 @@ class _AlertScreenState extends State<AlertScreen> {
         backgroundColor: Colors.grey[200],
         elevation: 0,
       ),
-      // The StreamBuilder listens to the WebSocket in the background
       body: StreamBuilder<Map<String, dynamic>>(
         stream: _alertService.alertStream,
         builder: (context, snapshot) {
 
-          // 1. Waiting for data / No connection yet
           if (!snapshot.hasData) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 20),
-                  Text('Connecting to Security Engine...', style: TextStyle(fontSize: 16)),
-                ],
-              ),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           final payload = snapshot.data!;
 
-          // 2. Handshake Successful (Safe State)
           if (payload['type'] == 'SYSTEM') {
             return Center(
               child: Column(
@@ -88,19 +75,58 @@ class _AlertScreenState extends State<AlertScreen> {
                   const SizedBox(height: 20),
                   Text(payload['message'] ?? 'Monitoring Active',
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green)),
-                  const SizedBox(height: 10),
-                  const Text('Your call is protected.'),
                 ],
               ),
             );
           }
 
-          // 3. 🚨 RED FLAG WARNING STATE 🚨
           if (payload['type'] == 'ALERT') {
-            // Check if it's CRITICAL or just SUSPICIOUS
             bool isCritical = payload['threatLevel'] == 'CRITICAL';
             Color warningColor = isCritical ? Colors.red.shade700 : Colors.orange.shade700;
 
+            // 🔽 MINIMIZED STATE UI 🔽
+            if (_isMinimized) {
+              return Column(
+                children: [
+                  // The Minimized Banner
+                  Container(
+                    width: double.infinity,
+                    color: warningColor,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            isCritical ? 'CRITICAL THREAT (Tap to expand)' : 'SUSPICIOUS (Tap to expand)',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.open_in_full, color: Colors.white),
+                          onPressed: () {
+                            setState(() {
+                              _isMinimized = false; // Maximize it!
+                            });
+                          },
+                        )
+                      ],
+                    ),
+                  ),
+                  // The rest of your app can go down here while minimized!
+                  const Expanded(
+                    child: Center(
+                      child: Text("App is minimized. Call is still being monitored.",
+                          style: TextStyle(color: Colors.grey)),
+                    ),
+                  )
+                ],
+              );
+            }
+
+            // 🔼 FULL SCREEN (MAXIMIZED) UI 🔼
             return Container(
               width: double.infinity,
               color: warningColor,
@@ -108,6 +134,18 @@ class _AlertScreenState extends State<AlertScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  // Collapse Button at the top right
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: IconButton(
+                      icon: const Icon(Icons.close_fullscreen, color: Colors.white, size: 30),
+                      onPressed: () {
+                        setState(() {
+                          _isMinimized = true; // Minimize it!
+                        });
+                      },
+                    ),
+                  ),
                   const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 100),
                   const SizedBox(height: 20),
                   Text(
@@ -126,9 +164,6 @@ class _AlertScreenState extends State<AlertScreen> {
                         const Divider(),
                         Text('Reason: ${payload['explanation']}',
                             style: const TextStyle(fontSize: 16), textAlign: TextAlign.center),
-                        const SizedBox(height: 10),
-                        Text('Tactics Used: ${(payload['tactics'] as List).join(', ')}',
-                            style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Colors.red)),
                       ],
                     ),
                   ),
@@ -137,7 +172,7 @@ class _AlertScreenState extends State<AlertScreen> {
             );
           }
 
-          return const Center(child: Text("Unknown data received"));
+          return const SizedBox.shrink();
         },
       ),
     );
