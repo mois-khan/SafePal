@@ -108,6 +108,8 @@ const processTranscript = async (speaker, text, broadcastFn) => {
 const api = process.env.DEEPGRAM_API_KEY
 const handleStream = (ws, broadcastFn) => {
     console.log('[StreamService] Twilio Call Connected');
+
+    console.log(`🔑 Deepgram Key Check: ${api ? 'Key Loaded' : 'KEY MISSING!'}`);
     
     // Helper function to spawn a Deepgram connection for a specific track
     const createDeepgramStream = (trackName) => {
@@ -132,8 +134,10 @@ const handleStream = (ws, broadcastFn) => {
             }
         });
 
-        dgSocket.on('error', (err) => console.error(`❌ Deepgram Error (${trackName}):`, err.message));
-        
+        dgSocket.on('error', (err) => {
+            console.error(`❌ Deepgram Raw Error (${trackName}):`, err);
+        });
+                
         // 🚨 ADDED: Catches HTTP rejections BEFORE the connection opens
         dgSocket.on('unexpected-response', (req, res) => {
             console.error(`🛑 Deepgram Connection Rejected (${trackName}). HTTP Status: ${res.statusCode}`);
