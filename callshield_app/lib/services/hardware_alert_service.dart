@@ -10,15 +10,19 @@ class HardwareAlertService {
   // 1. Initialize the Notification Channel
   Future<void> initialize() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
-    AndroidInitializationSettings('@mipmap/ic_launcher'); // Uses default app icon
+    AndroidInitializationSettings('@mipmap/ic_launcher');
 
     const InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
     );
 
     await _notificationsPlugin.initialize(initializationSettings);
-  }
 
+    // 🚨 ADDED THIS: Ask Android 13+ for permission to show notifications
+    await _notificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
+  }
   // 2. The Main Trigger Function
   Future<void> triggerSensoryAlert(String threatLevel, int probability, String reason) async {
     bool isCritical = threatLevel == 'CRITICAL';
