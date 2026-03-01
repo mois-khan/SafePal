@@ -1,35 +1,52 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'smart_alert_engine.dart';
+import 'hardware_alert_service.dart';
 
 class AlertService {
   WebSocketChannel? _channel;
-
-  // The "loudspeaker" that will broadcast the JSON payload to your UI
   final StreamController<Map<String, dynamic>> _alertController = StreamController<Map<String, dynamic>>.broadcast();
 
-  // Your UI will listen to this stream
+  // Initialize our Brain and Muscle
+  final SmartAlertEngine _smartEngine = SmartAlertEngine();
+  final HardwareAlertService _hardwareService = HardwareAlertService();
+
   Stream<Map<String, dynamic>> get alertStream => _alertController.stream;
 
+  AlertService() {
+    // Setup Android Notifications when the service is created
+    _hardwareService.initialize();
+  }
+
   void connect(String ngrokUrl) {
-    // 1. Convert https:// to wss:// for WebSockets
     final wsUrl = ngrokUrl.replaceFirst('https://', 'wss://') + '/flutter-alerts';
-    print('📱 Connecting to CallShield-AI: $wsUrl');
 
     try {
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
 
-      // 2. Listen for incoming JSON payloads from Node.js
       _channel!.stream.listen(
             (message) {
           final decodedMessage = jsonDecode(message);
-          print('📥 Received from server: $decodedMessage');
 
-          // Push the decoded JSON into the stream so the UI updates instantly
-          _alertController.add(decodedMessage);
+          if (decodedMessage['type'] == 'SYSTEM') {
+            _alertController.add(decodedMessage);
+          }
+          else if (decodedMessage['type'] == 'ALERT') {
+            String threatLevel = decodedMessage['threatLevel'];
+            int prob = decodedMessage['probability'] ?? 0;
+            String reason = decodedMessage['explanation'] ?? 'Unknown tactics detected';
+
+            // Push to the UI immediately (The screen always updates instantly)
+            _alertController.add(decodedMessage);
+
+            // Ask the Brain: Should we buzz the phone?
+            if (_smartEngine.shouldTriggerHardwareAlert(threatLevel)) {
+              // The Brain said YES. Flex the Muscle!
+              _hardwareService.triggerSensoryAlert(threatLevel, prob, reason);
+            }
+          }
         },
-        onDone: () => print('🔴 WebSocket Closed.'),
-        onError: (error) => print('⚠️ WebSocket Error: $error'),
       );
     } catch (e) {
       print('❌ Could not connect: $e');
@@ -39,5 +56,6 @@ class AlertService {
   void disconnect() {
     _channel?.sink.close();
     _alertController.close();
+    _smartEngine.reset(); // Reset the cooldowns for the next phone call
   }
 }
