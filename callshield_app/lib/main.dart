@@ -232,12 +232,18 @@ class _AlertScreenState extends State<AlertScreen> {
         ],
       ),
       // 🚨 NEW: The body is now your beautiful Home Screen!
-      body: HomeScreen(
-        isMonitoring: _alertService.isMonitoring,
-        onToggle: () {
-          setState(() {
-            _alertService.toggleMonitoring();
-          });
+      body: ValueListenableBuilder<bool>(
+        valueListenable: _alertService.isConnected,
+        builder: (context, isConnected, child) {
+          return HomeScreen(
+            isMonitoring: _alertService.isMonitoring,
+            isConnected: isConnected, // Pass the live state to the UI
+            onToggle: () {
+              setState(() {
+                _alertService.toggleMonitoring();
+              });
+            },
+          );
         },
       ),
     );

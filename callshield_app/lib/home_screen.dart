@@ -4,11 +4,13 @@ import 'package:google_fonts/google_fonts.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isMonitoring;
+  final bool isConnected; // 🚨 NEW: Added connection state
   final VoidCallback onToggle;
 
   const HomeScreen({
     super.key,
     required this.isMonitoring,
+    required this.isConnected, // 🚨 NEW
     required this.onToggle,
   });
 
@@ -23,7 +25,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    // This makes the shield "breathe"
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -42,8 +43,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    // 🚨 NEW LOGIC: It only glows if the user wants it ON *AND* the server is connected
+    bool isSystemActive = widget.isMonitoring && widget.isConnected;
+
+    // 🚨 NEW LOGIC: Dynamic Status Text
+    String statusText = "System Paused";
+    Color statusColor = Colors.grey;
+    if (!widget.isConnected) {
+      statusText = "Server Disconnected";
+      statusColor = const Color(0xFFEF4444); // Red warning
+    } else if (isSystemActive) {
+      statusText = "Monitoring Active";
+      statusColor = const Color(0xFF6366F1); // Indigo active
+    }
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Midnight Slate
+      backgroundColor: const Color(0xFF0F172A),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -87,16 +102,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     animation: _pulseAnimation,
                     builder: (context, child) {
                       return Transform.scale(
-                        scale: widget.isMonitoring ? _pulseAnimation.value : 1.0,
+                        // Only pulse if actively connected and monitoring
+                        scale: isSystemActive ? _pulseAnimation.value : 1.0,
                         child: Container(
                           width: 180,
                           height: 180,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: widget.isMonitoring
+                            color: isSystemActive
                                 ? const Color(0xFF6366F1).withOpacity(0.15)
                                 : Colors.grey.withOpacity(0.05),
-                            boxShadow: widget.isMonitoring ? [
+                            boxShadow: isSystemActive ? [
                               BoxShadow(
                                 color: const Color(0xFF6366F1).withOpacity(0.3),
                                 blurRadius: 40,
@@ -110,14 +126,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               height: 120,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: widget.isMonitoring
+                                color: isSystemActive
                                     ? const Color(0xFF6366F1)
                                     : const Color(0xFF1E293B),
                               ),
                               child: Icon(
-                                widget.isMonitoring ? Icons.security : Icons.shield_outlined,
+                                isSystemActive ? Icons.security : Icons.shield_outlined,
                                 size: 50,
-                                color: widget.isMonitoring ? Colors.white : Colors.grey,
+                                // Red icon if disconnected, white if active, grey if paused
+                                color: !widget.isConnected
+                                    ? const Color(0xFFEF4444)
+                                    : (isSystemActive ? Colors.white : Colors.grey),
                               ),
                             ),
                           ),
@@ -129,9 +148,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 const SizedBox(height: 30),
                 Center(
                   child: Text(
-                    widget.isMonitoring ? "Monitoring Active" : "System Paused",
+                    statusText,
                     style: GoogleFonts.plusJakartaSans(
-                      color: widget.isMonitoring ? const Color(0xFF6366F1) : Colors.grey,
+                      color: statusColor,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.2,
@@ -165,14 +184,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                widget.isMonitoring ? "Analyzing in real-time" : "Sleeping",
+                                !widget.isConnected
+                                    ? "Waiting for connection..."
+                                    : (widget.isMonitoring ? "Analyzing in real-time" : "Sleeping"),
                                 style: GoogleFonts.plusJakartaSans(color: Colors.grey[400], fontSize: 14),
                               ),
                             ],
                           ),
                           Switch.adaptive(
                             value: widget.isMonitoring,
-                            onChanged: (val) => widget.onToggle(),
+                            // 🚨 Disable switch if there is no server connection!
+                            onChanged: widget.isConnected
+                                ? (val) => widget.onToggle()
+                                : null,
                             activeColor: const Color(0xFF6366F1),
                             inactiveTrackColor: const Color(0xFF1E293B),
                           )
@@ -183,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 const SizedBox(height: 40),
 
-                // 4. THREAT INTELLIGENCE FEED
+                // 4. THREAT INTELLIGENCE FEED (Unchanged)
                 Text(
                   "Latest Scam Tactics",
                   style: GoogleFonts.plusJakartaSans(
@@ -225,7 +249,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  // Helper widget for the horizontal scrolling threat cards
   Widget _buildThreatCard(String title, String desc, IconData icon) {
     return Container(
       width: 260,
