@@ -1,77 +1,96 @@
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'smart_alert_engine.dart';
-import 'hardware_alert_service.dart';
 
 class AlertService {
+  WebSocketChannel? _channel;
+  final StreamController<Map<String, dynamic>> _alertController = StreamController.broadcast();
+  Stream<Map<String, dynamic>> get alertStream => _alertController.stream;
 
-  // Add this boolean to track the state
-  bool isMonitoring = true;
+  bool isMonitoring = true; // User's intentional toggle state
+  final ValueNotifier<bool> isConnected = ValueNotifier<bool>(false); // Actual network state
 
-  // Add this function to send the command to Node.js
+  String? _currentUrl;
+  Timer? _reconnectTimer;
+
+  void connect(String url) {
+    _currentUrl = url;
+    _initConnection();
+  }
+
+  void _initConnection() {
+    if (_currentUrl == null) return;
+
+    try {
+      // Ensure we are using wss:// or ws://
+      final wsUrlString = _currentUrl!.startsWith('http')
+          ? _currentUrl!.replaceFirst('http', 'ws')
+          : _currentUrl!;
+
+      final wsUrl = Uri.parse(wsUrlString);
+
+      _channel = WebSocketChannel.connect(wsUrl);
+
+      // If we connect successfully, update state
+      isConnected.value = true;
+      print("✅ [AlertService] Connected to backend");
+
+      _channel!.stream.listen(
+            (message) {
+          try {
+            final data = json.decode(message);
+            _alertController.add(data);
+          } catch (e) {
+            print("Error parsing message: $e");
+          }
+        },
+        onDone: () {
+          print("❌ [AlertService] WebSocket Disconnected (Server offline)");
+          _handleDisconnect();
+        },
+        onError: (error) {
+          print("❌ [AlertService] WebSocket Error: $error");
+          _handleDisconnect();
+        },
+        cancelOnError: true,
+      );
+    } catch (e) {
+      print("[AlertService] Connection failed: $e");
+      _handleDisconnect();
+    }
+  }
+
+  void _handleDisconnect() {
+    isConnected.value = false; // Instantly tells the UI the server is gone
+    _channel?.sink.close();
+    _channel = null;
+
+    // Auto-Reconnect Loop: Try again every 3 seconds
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (!isConnected.value) {
+        print("🔄 [AlertService] Attempting to auto-reconnect...");
+        _initConnection();
+      } else {
+        timer.cancel(); // Stop looping if connected
+      }
+    });
+  }
+
   void toggleMonitoring() {
     isMonitoring = !isMonitoring;
-    final action = isMonitoring ? 'resume_monitoring' : 'pause_monitoring';
-
-    // Send the JSON command UP the WebSocket to the Node.js server
-    if (_channel != null) {
+    // Only send the command if the server is actually listening
+    if (_channel != null && isConnected.value) {
+      final action = isMonitoring ? 'resume_monitoring' : 'pause_monitoring';
       _channel!.sink.add(jsonEncode({'action': action}));
       print("Sent to Backend: $action");
     }
   }
 
-  WebSocketChannel? _channel;
-  final StreamController<Map<String, dynamic>> _alertController = StreamController<Map<String, dynamic>>.broadcast();
-
-  // Initialize our Brain and Muscle
-  final SmartAlertEngine _smartEngine = SmartAlertEngine();
-  final HardwareAlertService _hardwareService = HardwareAlertService();
-
-  Stream<Map<String, dynamic>> get alertStream => _alertController.stream;
-
-  AlertService() {
-    // Setup Android Notifications when the service is created
-    _hardwareService.initialize();
-  }
-
-  void connect(String ngrokUrl) {
-    final wsUrl = ngrokUrl.replaceFirst('https://', 'wss://') + '/flutter-alerts';
-
-    try {
-      _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
-
-      _channel!.stream.listen(
-            (message) {
-          final decodedMessage = jsonDecode(message);
-
-          if (decodedMessage['type'] == 'SYSTEM') {
-            _alertController.add(decodedMessage);
-          }
-          else if (decodedMessage['type'] == 'ALERT') {
-            String threatLevel = decodedMessage['threatLevel'];
-            int prob = decodedMessage['probability'] ?? 0;
-            String reason = decodedMessage['explanation'] ?? 'Unknown tactics detected';
-
-            // Push to the UI immediately (The screen always updates instantly)
-            _alertController.add(decodedMessage);
-
-            // Ask the Brain: Should we buzz the phone?
-            if (_smartEngine.shouldTriggerHardwareAlert(threatLevel)) {
-              // The Brain said YES. Flex the Muscle!
-              _hardwareService.triggerSensoryAlert(threatLevel, prob, reason);
-            }
-          }
-        },
-      );
-    } catch (e) {
-      print('❌ Could not connect: $e');
-    }
-  }
-
   void disconnect() {
+    _reconnectTimer?.cancel();
     _channel?.sink.close();
-    _alertController.close();
-    _smartEngine.reset(); // Reset the cooldowns for the next phone call
+    isConnected.value = false;
   }
 }
