@@ -24,7 +24,7 @@ Current performance:
 
 ### System Architecture
 
-The system is designed as a decoupled, distributed processing pipeline to isolate the client-side audio capture from the computationally intensive inference layer. 
+The system operates as a streaming pipeline where live call audio is transcribed in real time and analyzed by an LLM for social-engineering intent before triggering user alerts.
 
 ```mermaid
 sequenceDiagram
