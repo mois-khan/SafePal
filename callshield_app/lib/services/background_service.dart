@@ -80,34 +80,38 @@ void onStart(ServiceInstance service) async {
         if (data['type'] == 'ALERT') {
           bool isCritical = data['threatLevel'] == 'CRITICAL';
 
-          // Step A: Tell the OS to show the notification
+          // ⏱️ Step A: Calculate Latency first!
+          String latencyText = "";
+          if (data['dispatch_time'] != null) {
+            final int serverTime = data['dispatch_time'];
+            final int phoneTime = DateTime.now().millisecondsSinceEpoch;
+            final int deliveryLatency = phoneTime - serverTime;
+            latencyText = "\n\n[⚡ E2E Delivery: ${deliveryLatency}ms]";
+          }
+
+          // Step B: Tell the OS to show the notification WITH the latency printed on it
+          // Step B: Tell the OS to show the notification
           flutterLocalNotificationsPlugin.show(
             id: DateTime.now().millisecond,
             title: isCritical ? '🚨 CRITICAL SCAM DETECTED' : '⚠️ SUSPICIOUS CALL',
-            body: data['explanation'],
-            notificationDetails: const NotificationDetails(
+            body: "${data['explanation']}$latencyText",
+            notificationDetails: NotificationDetails(
               android: AndroidNotificationDetails(
                 'scam_alerts',
                 'Threat Alerts',
                 importance: Importance.max,
                 priority: Priority.max,
                 icon: 'ic_bg_service_small',
-                color: Color(0xFFEF4444),
+                color: const Color(0xFFEF4444),
                 fullScreenIntent: true,
+                // 🚨 THE FIX: Forces Android to show the full multi-line text!
+                styleInformation: BigTextStyleInformation(
+                  "${data['explanation']}$latencyText",
+                  htmlFormatBigText: true,
+                ),
               ),
             ),
           );
-
-          // Step B: Calculate the Delivery Latency immediately after the OS command
-          if (data['dispatch_time'] != null) {
-            final int serverTime = data['dispatch_time'];
-            final int phoneTime = DateTime.now().millisecondsSinceEpoch;
-            final int deliveryLatency = phoneTime - serverTime;
-
-            debugPrint("=========================================");
-            debugPrint("⏱️ [LATENCY REPORT] E2E Delivery: ${deliveryLatency}ms");
-            debugPrint("=========================================");
-          }
 
           service.invoke('onThreatDetected', data);
         }

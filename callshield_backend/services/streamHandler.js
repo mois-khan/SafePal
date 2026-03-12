@@ -75,18 +75,17 @@ const processTranscript = async (speaker, text, broadcastFn) => {
         newWordCount = 0;
 
         try {
-            const analysis = await evaluateWithGemini(transcriptPayload);
-            
-            console.log("✅ [GEMINI] Analysis Complete:");
-            console.log(`🚨 Scam Probability: ${analysis.scam_probability}%`);
-            console.log(`🚩 Tactics: ${analysis.flagged_tactics.join(', ') || 'None'}`);
-            console.log(`📝 Reasoning: ${analysis.explanation}\n`);
 
             // 🚨 UPDATE 2: TRIGGER THE BROADCAST TO FLUTTER 🚨
             // ⏱️ 1. Measure Gemini's exact thinking time
             const aiStartTime = Date.now();
             const analysis = await evaluateWithGemini(transcriptPayload);
             const aiEndTime = Date.now();
+
+            console.log("✅ [GEMINI] Analysis Complete:");
+            console.log(`🚨 Scam Probability: ${analysis.scam_probability}%`);
+            console.log(`🚩 Tactics: ${analysis.flagged_tactics.join(', ') || 'None'}`);
+            console.log(`📝 Reasoning: ${analysis.explanation}\n`);
             
             console.log(`🧠 [LATENCY] Gemini Processing Time: ${aiEndTime - aiStartTime}ms`);
 
