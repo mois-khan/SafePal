@@ -7,6 +7,8 @@ class HomeScreen extends StatefulWidget {
   final bool isConnected; // 🚨 NEW: Added connection state
   final VoidCallback onToggle;
 
+
+
   const HomeScreen({
     super.key,
     required this.isMonitoring,
@@ -68,6 +70,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 1. THE HEADER
+                // 1. THE HEADER
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -75,22 +78,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Good Morning,",
+                          "Security Overview",
                           style: GoogleFonts.plusJakartaSans(color: Colors.grey[400], fontSize: 16),
                         ),
                         Text(
-                          "You are secure.",
+                          widget.isConnected ? "You are protected." : "Action Required.",
                           style: GoogleFonts.plusJakartaSans(
-                            color: Colors.white,
+                            color: widget.isConnected ? Colors.white : const Color(0xFFEF4444),
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
-                    CircleAvatar(
-                      backgroundColor: const Color(0xFF1E293B),
-                      child: Icon(Icons.person_outline, color: Colors.grey[300]),
+                    Icon(
+                      widget.isConnected ? Icons.verified_user : Icons.gpp_bad,
+                      color: widget.isConnected ? const Color(0xFF6366F1) : const Color(0xFFEF4444),
+                      size: 32,
                     )
                   ],
                 ),

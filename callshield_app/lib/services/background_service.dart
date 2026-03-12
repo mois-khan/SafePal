@@ -76,27 +76,39 @@ void onStart(ServiceInstance service) async {
         final data = json.decode(message);
 
         // 2. TRIGGER NOTIFICATION IF SCAM DETECTED
+        // 2. TRIGGER NOTIFICATION IF SCAM DETECTED
         if (data['type'] == 'ALERT') {
           bool isCritical = data['threatLevel'] == 'CRITICAL';
 
+          // Step A: Tell the OS to show the notification
           flutterLocalNotificationsPlugin.show(
-            DateTime.now().millisecond, // Unique ID
-            isCritical ? '🚨 CRITICAL SCAM DETECTED' : '⚠️ SUSPICIOUS CALL',
-            data['explanation'],
-            const NotificationDetails(
+            id: DateTime.now().millisecond,
+            title: isCritical ? '🚨 CRITICAL SCAM DETECTED' : '⚠️ SUSPICIOUS CALL',
+            body: data['explanation'],
+            notificationDetails: const NotificationDetails(
               android: AndroidNotificationDetails(
                 'scam_alerts',
                 'Threat Alerts',
                 importance: Importance.max,
                 priority: Priority.max,
-                icon: 'ic_bg_service_small', // We will add this icon later, default is app icon
+                icon: 'ic_bg_service_small',
                 color: Color(0xFFEF4444),
-                fullScreenIntent: true, // Pops up over other apps
+                fullScreenIntent: true,
               ),
             ),
           );
 
-          // Send data back to the UI if the app happens to be open
+          // Step B: Calculate the Delivery Latency immediately after the OS command
+          if (data['dispatch_time'] != null) {
+            final int serverTime = data['dispatch_time'];
+            final int phoneTime = DateTime.now().millisecondsSinceEpoch;
+            final int deliveryLatency = phoneTime - serverTime;
+
+            debugPrint("=========================================");
+            debugPrint("⏱️ [LATENCY REPORT] E2E Delivery: ${deliveryLatency}ms");
+            debugPrint("=========================================");
+          }
+
           service.invoke('onThreatDetected', data);
         }
       }, onDone: () {

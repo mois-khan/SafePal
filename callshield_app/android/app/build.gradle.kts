@@ -44,5 +44,5 @@ flutter {
 
 // Added for flutter_local_notifications backwards compatibility
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

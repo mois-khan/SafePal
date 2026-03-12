@@ -177,20 +177,33 @@ Generated securely by CallShield-AI.
                           color: Colors.black.withOpacity(0.2),
                           border: const Border(top: BorderSide(color: Colors.white12)),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            TextButton.icon(
-                              icon: const Icon(Icons.share, size: 18, color: Color(0xFF6366F1)),
-                              label: Text("Evidence", style: GoogleFonts.plusJakartaSans(color: const Color(0xFF6366F1), fontWeight: FontWeight.bold)),
-                              onPressed: () => _exportEvidence(alert),
-                            ),
-                            TextButton.icon(
-                              icon: const Icon(Icons.phone_in_talk, size: 18, color: Colors.greenAccent),
-                              label: Text("1930", style: GoogleFonts.plusJakartaSans(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
-                              onPressed: _callHelpline,
-                            ),
-                          ],
+                        child: // Action Bar (Share, Report, Call 1930)
+                        Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.2),
+                            border: const Border(top: BorderSide(color: Colors.white12)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              TextButton.icon(
+                                icon: const Icon(Icons.share, size: 16, color: Color(0xFF6366F1)),
+                                label: Text("Evidence", style: GoogleFonts.plusJakartaSans(color: const Color(0xFF6366F1), fontWeight: FontWeight.bold, fontSize: 13)),
+                                onPressed: () => _exportEvidence(alert),
+                              ),
+                              TextButton.icon(
+                                icon: const Icon(Icons.local_police, size: 16, color: Colors.orangeAccent),
+                                label: Text("Report", style: GoogleFonts.plusJakartaSans(color: Colors.orangeAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                                onPressed: _launchCyberPortal,
+                              ),
+                              TextButton.icon(
+                                icon: const Icon(Icons.phone_in_talk, size: 16, color: Colors.greenAccent),
+                                label: Text("1930", style: GoogleFonts.plusJakartaSans(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                                onPressed: _callHelpline,
+                              ),
+                            ],
+                          ),
                         ),
                       )
                     ],

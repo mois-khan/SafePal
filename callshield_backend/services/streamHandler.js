@@ -83,7 +83,13 @@ const processTranscript = async (speaker, text, broadcastFn) => {
             console.log(`📝 Reasoning: ${analysis.explanation}\n`);
 
             // 🚨 UPDATE 2: TRIGGER THE BROADCAST TO FLUTTER 🚨
-            // If Gemini says it's a scam (e.g., probability > 60%), we alert the user
+            // ⏱️ 1. Measure Gemini's exact thinking time
+            const aiStartTime = Date.now();
+            const analysis = await evaluateWithGemini(transcriptPayload);
+            const aiEndTime = Date.now();
+            
+            console.log(`🧠 [LATENCY] Gemini Processing Time: ${aiEndTime - aiStartTime}ms`);
+
             if (analysis.scam_probability > 60 && broadcastFn) {
                 const threatPayload = {
                     type: "ALERT",
@@ -91,7 +97,8 @@ const processTranscript = async (speaker, text, broadcastFn) => {
                     probability: analysis.scam_probability,
                     tactics: analysis.flagged_tactics,
                     explanation: analysis.explanation,
-                    timestamp: new Date().toISOString()
+                    // ⏱️ 2. The Tracer Bullet: The exact millisecond it leaves the server
+                    dispatch_time: Date.now() 
                 };
                 
                 broadcastFn(threatPayload);

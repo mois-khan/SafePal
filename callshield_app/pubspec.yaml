@@ -1,6 +1,6 @@
 name: callshield_app
 description: "A new Flutter project."
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: 'none'
 
 version: 1.0.0+1
 
@@ -23,9 +23,9 @@ dependencies:
   vibration: ^3.1.7
   audioplayers: ^5.2.1
   dash_bubble: ^2.0.0
+  flutter_background_service: ^5.1.0
+  flutter_local_notifications: ^20.1.0
 
-  flutter_background_service: ^3.5.0
-  flutter_local_notifications: ^17.0.6
 
 dev_dependencies:
   flutter_test:
