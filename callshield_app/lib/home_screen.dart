@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isMonitoring;
@@ -103,13 +104,27 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
               onPressed: () async {
-                // Save to physical device memory!
-                await prefs.setString('userName', nameController.text);
-                await prefs.setString('sosNumber', phoneController.text);
-                if (mounted) Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("SOS Contact Saved!"), backgroundColor: Colors.green),
-                );
+                // 🚨 1. Request SMS Permission from the user
+                var status = await Permission.sms.status;
+                if (!status.isGranted) {
+                  status = await Permission.sms.request();
+                }
+
+                if (status.isGranted) {
+                  // 🚨 2. Save to physical device memory!
+                  await prefs.setString('userName', nameController.text);
+                  await prefs.setString('sosNumber', phoneController.text);
+
+                  if (mounted) Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("SOS Contact Saved & Armed!"), backgroundColor: Colors.green),
+                  );
+                } else {
+                  // If they deny permission, warn them!
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("SMS Permission is required for SOS!"), backgroundColor: Colors.red),
+                  );
+                }
               },
               child: Text("Save", style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold)),
             ),

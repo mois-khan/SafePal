@@ -7,9 +7,11 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:background_sms/background_sms.dart';
 
 // 🚨 UPDATE WITH YOUR NGROK URL
 const String backendUrl = "wss://concavely-inflationary-eddy.ngrok-free.dev/flutter-alerts";
+bool hasSentSOSThisSession = false;
 
 Future<void> initializeBackgroundService() async {
   final service = FlutterBackgroundService();
@@ -73,7 +75,6 @@ void onStart(ServiceInstance service) async {
       channel = IOWebSocketChannel(ws);
       debugPrint("✅ [Background] Connected to Node.js!");
 
-
       // 🚨 NEW: THE SOS HANDSHAKE
       // Fetch the saved contacts and silently register them with the server
       final prefs = await SharedPreferences.getInstance();
@@ -97,9 +98,8 @@ void onStart(ServiceInstance service) async {
         debugPrint("⚠️ [SOS] No contacts found in device memory. Did you save them in the UI?");
       }
 
-
-
-      channel!.stream.listen((message) {
+      // 🚨 UPDATED TO ASYNC SO WE CAN FETCH LOCAL STORAGE FOR THE SMS
+      channel!.stream.listen((message) async {
         final data = json.decode(message);
 
         // 2. TRIGGER NOTIFICATION IF SCAM DETECTED
@@ -115,7 +115,6 @@ void onStart(ServiceInstance service) async {
             latencyText = "\n\n[⚡ E2E Delivery: ${deliveryLatency}ms]";
           }
 
-          // Step B: Tell the OS to show the notification WITH the latency printed on it
           // Step B: Tell the OS to show the notification
           flutterLocalNotificationsPlugin.show(
             id: DateTime.now().millisecond,
@@ -139,8 +138,54 @@ void onStart(ServiceInstance service) async {
             ),
           );
 
+          // Update the UI
           service.invoke('onThreatDetected', data);
+
+          // ==========================================
+          // 🚨 3. THE NATIVE ANDROID SMS TRIGGER 🚨
+          // ==========================================
+          if (isCritical) {
+            if (!hasSentSOSThisSession) {
+              hasSentSOSThisSession = true; // Lock it down so we don't spam!
+
+              final prefs = await SharedPreferences.getInstance();
+              final String? userName = prefs.getString('userName');
+              final String? sosNumber = prefs.getString('sosNumber');
+
+              if (sosNumber != null && sosNumber.isNotEmpty) {
+                // Formatting the message payload
+                final String probability = data['probability']?.toString() ?? '99';
+                final String tactics = (data['tactics'] as List?)?.join(', ') ?? 'Unknown';
+
+                String msgBody = "🚨 CallShield SOS 🚨\n${userName ?? 'A user'} is on a flagged scam call (Threat Level: $probability%).\n\nTactics detected: $tactics.\n\nPlease call them immediately to interrupt the scam.";
+
+                debugPrint("📱 [NATIVE] Threat Critical! Firing native SMS to $sosNumber...");
+
+                try {
+                  // Fire the text message via the Android SIM!
+                  SmsStatus result = await BackgroundSms.sendMessage(
+                      phoneNumber: sosNumber,
+                      message: msgBody
+                  );
+
+                  if (result == SmsStatus.sent) {
+                    debugPrint("✅ [NATIVE] SOS SMS Sent Successfully via SIM card!");
+                  } else {
+                    debugPrint("❌ [NATIVE] Failed to send SMS. Status: $result");
+                  }
+                } catch (e) {
+                  debugPrint("❌ [NATIVE] SMS Plugin Error: $e");
+                }
+              }
+            }
+          }
         }
+
+        // (Optional) Reset the spam lock if the server sends a call ended event
+        if (data['event'] == 'call_ended') {
+          hasSentSOSThisSession = false;
+        }
+
       }, onDone: () {
         debugPrint("❌ [Background] Disconnected. Reconnecting in 5s...");
         Future.delayed(const Duration(seconds: 5), connectWebSocket);
