@@ -175,6 +175,12 @@ const handleStream = (ws, broadcastFn) => {
                     // 🚨 2. STRICT RULE: NEVER log the 'rawTranscript'
                     console.log(`🗣️ [${trackName.toUpperCase()}]: ${safeTranscript}`);
 
+                    broadcastFn({
+                        type: "TRANSCRIPT",
+                        role: trackName, // 'inbound' (scammer) or 'outbound' (victim)
+                        text: safeTranscript
+                    });
+
                     // 🚨 3. Send ONLY the scrubbed text to Gemini
                     processTranscript(trackName, safeTranscript, broadcastFn);
                 }

@@ -390,21 +390,35 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          // (Inside your Command Center row in home_screen.dart)
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 "AI Call Scanner",
-                                style: GoogleFonts.plusJakartaSans(
-                                    color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                                style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                !_liveConnectionStatus
-                                    ? "Waiting for connection..."
-                                    : (widget.isMonitoring ? "Analyzing in real-time" : "Sleeping"),
+                                !_liveConnectionStatus ? "Waiting for connection..." : (widget.isMonitoring ? "Analyzing in real-time" : "Sleeping"),
                                 style: GoogleFonts.plusJakartaSans(color: Colors.grey[400], fontSize: 14),
                               ),
+                              const SizedBox(height: 12),
+
+                              // 🚨 NEW BUTTON TO OPEN THE RADAR 🚨
+                              if (_liveConnectionStatus)
+                                OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFF6366F1),
+                                      side: const BorderSide(color: Color(0xFF6366F1)),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
+                                  ),
+                                  icon: const Icon(Icons.radar, size: 18),
+                                  label: Text("Open Live Radar", style: GoogleFonts.plusJakartaSans(fontSize: 12)),
+                                  onPressed: () {
+                                    Navigator.push(context, MaterialPageRoute(builder: (context) => const LiveRadarScreen()));
+                                  },
+                                )
                             ],
                           ),
                           Switch.adaptive(

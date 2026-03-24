@@ -139,6 +139,11 @@ void onStart(ServiceInstance service) async {
           return;
         }
 
+        // 🚨 NEW: Catch live transcripts and pipe them to the UI!
+        if (data['type'] == 'TRANSCRIPT') {
+          service.invoke('onTranscript', data);
+        }
+
         // ==========================================
         // 🚨 2. TRIGGER NOTIFICATION & SMS LOGIC
         // ==========================================
