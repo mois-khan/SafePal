@@ -155,7 +155,7 @@ const handleStream = (ws, broadcastFn) => {
     
     // Helper function to spawn a Deepgram connection for a specific track
     const createDeepgramStream = (trackName) => {
-        const deepgramUrl = 'wss://api.deepgram.com/v1/listen?encoding=mulaw&sample_rate=8000&channels=1&model=nova-2&smart_format=true';
+        const deepgramUrl = 'wss://api.deepgram.com/v1/listen?encoding=mulaw&sample_rate=8000&channels=1&model=nova-2&smart_format=true&language=en-IN';
         
         const dgSocket = new WebSocket(deepgramUrl, {
             headers: { Authorization: `Token ${api}` }

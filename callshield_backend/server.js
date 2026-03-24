@@ -39,16 +39,10 @@ const flutterClients = new Set();
 const broadcastToFlutter = (payload) => {
     flutterClients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
-            
-            // Ensure the payload has the 'type' flag that Flutter is looking for!
-            const finalPayload = {
-                type: "ALERT",
-                ...payload
-            };
-
-            // 1. Send the visual alert to the Flutter app's UI
-            client.send(JSON.stringify(finalPayload));
-            console.log(`📡 Threat Alert broadcasted to Flutter app!`);
+            client.send(JSON.stringify(payload));
+            if (payload.type === "ALERT") {
+                console.log(`🚨 [DASHBOARD] Threat Alert sent to Flutter UI!`);
+            }
         }
     });
 };
