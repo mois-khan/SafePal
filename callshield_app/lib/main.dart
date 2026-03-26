@@ -12,6 +12,8 @@ import 'home_screen.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'services/background_service.dart';
 
+import 'threat_dashboard.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -146,11 +148,11 @@ class _AlertScreenState extends State<AlertScreen> {
             onPressed: _startFloatingBubble,
           ),
           IconButton(
-            icon: const Icon(Icons.history, color: Color(0xFF6366F1)),
+            icon: const Icon(Icons.dashboard, color: Color(0xFF6366F1)), // Changed icon
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const HistoryScreen()),
+                MaterialPageRoute(builder: (context) => const ThreatDashboard()), // Changed routing
               );
             },
           )

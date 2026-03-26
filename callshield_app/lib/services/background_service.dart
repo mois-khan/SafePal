@@ -9,6 +9,7 @@ import 'package:web_socket_channel/io.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sms_sender_background/sms_sender.dart';
 import 'package:flutter/services.dart';
+import 'report_service.dart';
 
 // 🚨 UPDATE WITH YOUR NGROK URL
 const String backendUrl = "wss://concavely-inflationary-eddy.ngrok-free.dev/flutter-alerts";
@@ -275,6 +276,42 @@ void onStart(ServiceInstance service) async {
             debugPrint("⚠️ [GRANDMA MODE] Disarmed. User must hang up manually.");
           }
         }
+
+        // ==========================================
+        // 🚨 5. THE END-OF-CALL SESSION MANAGER
+        // ==========================================
+        if (data['type'] == 'CALL_SUMMARY') {
+          debugPrint("📁 [SESSION] Call Summary Received. Aggregating data...");
+
+          if ((data['maxThreat'] ?? 0) >= 60) {
+            try {
+              // 1. Silently generate the PDF and get the file path
+              // Note: Make sure ReportService is imported at the top of this file!
+              String savedPdfPath = await ReportService.generateSilentReport(data);
+
+              // 2. Build the Database Record
+              Map<String, dynamic> sessionRecord = {
+                'callerId': data['callerId'],
+                'maxThreat': data['maxThreat'],
+                'tactics': data['tactics'] ?? [],
+                'timestamp': DateTime.now().toIso8601String(),
+                'pdfPath': savedPdfPath
+              };
+
+              // 3. Save to SharedPreferences (Local DB)
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.reload();
+              List<String> history = prefs.getStringList('threat_dashboard') ?? [];
+              history.insert(0, jsonEncode(sessionRecord)); // Add to top
+              await prefs.setStringList('threat_dashboard', history);
+
+              debugPrint("✅ [SESSION] Threat saved to local database successfully!");
+            } catch (e) {
+              debugPrint("❌ [SESSION] Error saving dashboard entry: $e");
+            }
+          }
+        }
+
       }, onDone: () {
         service.invoke('server_status', {'isConnected': false});
         // 📉 GRACEFUL OR UNGRACEFUL DISCONNECT

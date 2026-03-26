@@ -29,6 +29,7 @@ dependencies:
   sms_sender_background: ^1.0.7
   pdf: ^3.12.0
   path_provider: ^2.1.5
+  flutter_email_sender: ^8.0.0
 
 
 dev_dependencies:

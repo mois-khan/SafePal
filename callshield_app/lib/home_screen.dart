@@ -5,10 +5,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:sms_sender_background/sms_sender.dart';
-import 'live_radar_screen.dart';
 import 'package:flutter/services.dart';
-import 'services/report_service.dart'; // 🚨 NEW: Phase 4 Import
+
+import 'live_radar_screen.dart';
+import 'threat_dashboard.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isMonitoring;
@@ -190,29 +190,32 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 const SizedBox(height: 24),
 
-                // 🚨 NEW: THE REPORT BUTTON FOR MANUAL USERS
+                // 🚨 DASHBOARD NAVIGATION BUTTON
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFFEF4444), // Aggressive Red
+                      foregroundColor: const Color(0xFFEF4444),
                       side: BorderSide(color: const Color(0xFFEF4444).withOpacity(0.5), width: 2),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    icon: const Icon(Icons.gavel_rounded),
+                    icon: const Icon(Icons.dashboard),
                     label: Text(
-                        "REPORT TO CYBER CELL",
+                        "VIEW THREAT DASHBOARD",
                         style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 16)
                     ),
-                    onPressed: () async {
-                      // Uses the exact same PDF engine!
-                      await ReportService.generateAndDispatchReport(data);
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Close modal
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ThreatDashboard()),
+                      );
                     },
                   ),
                 ),
 
-                const SizedBox(height: 12), // Spacer
+                const SizedBox(height: 12),
 
                 // THE DISMISS BUTTON (Existing)
                 SizedBox(
@@ -723,7 +726,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
                   const SizedBox(height: 12), // Spacer
 
-                  // 🚨 NEW: THE CYBER CELL COUNTER-ATTACK BUTTON
+                  // 🚨 DASHBOARD NAVIGATION BUTTON
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
@@ -733,14 +736,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      icon: const Icon(Icons.gavel_rounded),
+                      icon: const Icon(Icons.dashboard), // Fixed icon
                       label: Text(
-                          "REPORT TO CYBER CELL",
+                          "VIEW THREAT DASHBOARD",
                           style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 16)
                       ),
-                      onPressed: () async {
-                        // Trigger the PDF Engine and open Email!
-                        await ReportService.generateAndDispatchReport(data);
+                      onPressed: () {
+                        Navigator.of(context).pop(); // Close modal
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ThreatDashboard()),
+                        );
                       },
                     ),
                   )

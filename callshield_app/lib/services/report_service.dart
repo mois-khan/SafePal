@@ -1,92 +1,98 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 class ReportService {
-  static Future<void> generateAndDispatchReport(dynamic data) async {
+  // 🚨 Generates the PDF silently in the background and returns the file path
+  static Future<String> generateSilentReport(dynamic data) async {
     final pdf = pw.Document();
 
-    // 1. Extract the forensic data from the AI payload
-    final String probability = data['probability']?.toString() ?? '100';
+    final String probability = data['maxThreat']?.toString() ?? '100';
     final List<dynamic> rawTactics = data['tactics'] ?? [];
-    final String tactics = rawTactics.isNotEmpty ? rawTactics.join(', ') : 'Coercion & Impersonation';
-    final String explanation = data['explanation'] ?? 'Critical scam activity detected and severed.';
+    final String tactics = rawTactics.isNotEmpty ? rawTactics.join(', ') : 'Impersonation, Coercion';
+    final String fullTranscript = data['transcript'] ?? 'Transcript log unavailable.';
+    final String callerId = data['callerId'] ?? 'Unknown';
     final String timestamp = DateTime.now().toIso8601String().split('T').join(' ');
 
-    // 2. Draw the Official PDF Document
+    // 📄 PAGE 1: OFFICIAL INCIDENT SUMMARY
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(40),
         build: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              // HEADER
               pw.Container(
-                  padding: const pw.EdgeInsets.only(bottom: 20),
-                  // 🚨 FIXED: Using decoration and pw.Border
-                  decoration: const pw.BoxDecoration(
-                    border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey, width: 2)),
-                  ),
+                  padding: const pw.EdgeInsets.only(bottom: 10),
+                  decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey900, width: 2))),
                   child: pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
                       children: [
-                        pw.Text("CALLSHIELD AI", style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
-                        pw.Text("AUTOMATED INCIDENT REPORT", style: pw.TextStyle(fontSize: 14, color: PdfColors.red800, fontWeight: pw.FontWeight.bold)),
+                        pw.Text("CALLSHIELD AI", style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                        pw.Text("FORENSIC THREAT REPORT", style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.red800)),
                       ]
                   )
               ),
               pw.SizedBox(height: 20),
-
-              // META DATA
-              pw.Text("REPORT GENERATED: $timestamp", style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
-              pw.Text("REPORTING AGENCY: National Cyber Crime Reporting Portal (NCRP)", style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
+              pw.Text("DATE GENERATED: $timestamp", style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+              pw.Text("TARGET SCAMMER ID: $callerId", style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
               pw.SizedBox(height: 30),
-
-              // THREAT SUMMARY
-              pw.Text("1. THREAT SUMMARY", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.Text("1. AI THREAT VERDICT", style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 10),
               pw.Container(
-                  padding: const pw.EdgeInsets.all(10),
-                  color: PdfColors.grey200,
+                  width: double.infinity,
+                  padding: const pw.EdgeInsets.all(15),
+                  decoration: pw.BoxDecoration(color: PdfColors.grey100, border: pw.Border.all(color: PdfColors.grey300)),
                   child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text("AI Confidence Score: $probability% (CRITICAL THREAT)", style: pw.TextStyle(color: PdfColors.red, fontWeight: pw.FontWeight.bold)),
-                        pw.SizedBox(height: 5),
+                        pw.Text("Confidence Score: $probability% (CRITICAL)", style: pw.TextStyle(color: PdfColors.red900, fontWeight: pw.FontWeight.bold)),
+                        pw.SizedBox(height: 8),
                         pw.Text("Identified Tactics: $tactics"),
-                        pw.SizedBox(height: 5),
-                        pw.Text("AI Forensic Analysis: $explanation"),
                       ]
                   )
               ),
               pw.SizedBox(height: 30),
-
-              // ACTION TAKEN
-              pw.Text("2. SYSTEM ACTION TAKEN", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.Text("2. PREVENTATIVE ACTIONS TAKEN", style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 10),
-              pw.Text("• Call forcefully terminated via native TelecomManager override at $timestamp."),
-              pw.Text("• Emergency SOS SMS dispatched to saved emergency contacts."),
-              pw.Text("• Zero-knowledge PII scrubber successfully redacted sensitive financial data from logs."),
+              pw.Bullet(text: "Call forcefully terminated via native OS override."),
+              pw.Bullet(text: "Emergency SOS dispatched to local trusted contacts."),
+              pw.Bullet(text: "Zero-Knowledge Scrubber applied. Financial PII redacted from logs."),
             ],
           );
         },
       ),
     );
 
-    // 3. Save to Temporary Device Storage
-    final output = await getTemporaryDirectory();
-    final file = File("${output.path}/CallShield_Forensic_Report_${DateTime.now().millisecondsSinceEpoch}.pdf");
+    // 📄 PAGE 2: THE RAW EVIDENCE (TRANSCRIPT)
+    pdf.addPage(
+        pw.MultiPage(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(40),
+            build: (pw.Context context) {
+              return [
+                pw.Text("3. REDACTED TRANSCRIPT LOG", style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 10),
+                pw.Text("Notice: All sensitive personal information (OTPs, Aadhaar, Credit Cards) has been redacted.", style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+                pw.SizedBox(height: 15),
+                pw.Container(
+                  width: double.infinity,
+                  padding: const pw.EdgeInsets.all(15),
+                  decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300)),
+                  child: pw.Text(fullTranscript, style: const pw.TextStyle(fontSize: 10, lineSpacing: 2.5)),
+                ),
+              ];
+            }
+        )
+    );
+
+    final output = await getApplicationDocumentsDirectory();
+    final file = File("${output.path}/CallShield_FIR_${DateTime.now().millisecondsSinceEpoch}.pdf");
     await file.writeAsBytes(await pdf.save());
 
-    // 4. Trigger the Native Android Share Intent (Bridging to Gmail)
-    await Share.shareXFiles(
-      [XFile(file.path)],
-      text: "Please find attached the automated forensic incident report generated by CallShield AI regarding a severe telecom fraud attempt.",
-      subject: "URGENT: CallShield AI Incident Report - Telecom Fraud",
-    );
+    return file.path; // Return path to the Database
   }
 }
