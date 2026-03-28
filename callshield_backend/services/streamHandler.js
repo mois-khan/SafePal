@@ -112,7 +112,8 @@ const handleStream = (ws, broadcastFn) => {
     };
 
     const createDeepgramStream = (trackName) => {
-        const deepgramUrl = 'wss://api.deepgram.com/v1/listen?encoding=mulaw&sample_rate=8000&channels=1&model=nova-2&smart_format=true&language=en-IN';
+        // 🚨 ADDED KEYWORD BOOSTING FOR INDIAN CONTEXT
+        const deepgramUrl = 'wss://api.deepgram.com/v1/listen?encoding=mulaw&sample_rate=8000&channels=1&model=nova-2&smart_format=true&language=en-IN&keywords=Aadhaar:3&keywords=OTP:2&keywords=TRAI:2&keywords=CBI:2&keywords=FedEx:2';
         const dgSocket = new WebSocket(deepgramUrl, { headers: { Authorization: `Token ${api}` } });
         
         dgSocket.on('message', (data) => {
